@@ -1,7 +1,7 @@
 # python-dtab
 Python DTab Parser (Delegation Table)
 
-This is a direct port of Finagles [DTab implementation](http://twitter.github.io/finagle/guide/Names.html).
+This is a direct port of Finagle's [DTab implementation](http://twitter.github.io/finagle/guide/Names.html).
 
 ## What works
 * parser (see tests for usage)
@@ -31,7 +31,7 @@ $ ./pants fmt dtab::
 
 ## REPL
 ```sh
-$ /pants repl dtab:dtab
+$ ./pants repl dtab:dtab
 Python 3.6.4 (default, Dec  1 2019, 11:49:07)
 [GCC 4.2.1 Compatible Apple LLVM 11.0.0 (clang-1100.0.33.8)] on darwin
 Type "help", "copyright", "credits" or "license" for more information.
