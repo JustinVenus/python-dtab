@@ -1,9 +1,14 @@
 from dtab.error import IllegalArgumentException
 from dtab.path import Path
 from dtab.tree import NameTree
-from dtab.util import u
-from io import BytesIO
+from dtab.util import u, PY3
+if PY3:
+  from io import StringIO as BytesIO
+else:
+  from io import BytesIO
 import string
+
+__all__ = ['NameTreeParsers']
 
 EOI = 2**8 - 1
 FORWARD_SLASH = 92
@@ -21,7 +26,10 @@ def to_ordinal(func):
     inner.__doc__ = func.__doc__
   # extract the inner name, so we
   # can read a stacktrace reasonably
-  inner.func_name = func.func_name
+  if PY3:
+    inner.__name__ = func.__name__
+  else:
+    inner.func_name = func.func_name
   return inner
 
 
@@ -49,7 +57,7 @@ class NameTreeParsers(object):
 
   def __init__(self, str_input):
     # avoiding circular dependencies
-    from dtab.dtab import Dentry, Dtab
+    from dtab import Dentry, Dtab
     self._dentry_cls = Dentry
     self._dtab_cls = Dtab
     self._str_input = u(str_input)
@@ -165,7 +173,10 @@ class NameTreeParsers(object):
         self.illegal("label char", c)
       if not self.is_label_char(self.peek):
         break
-    return bio.getvalue().decode('utf-8')
+    if PY3:
+      return bio.getvalue()
+    else:
+      return bio.getvalue().decode('utf-8')
 
   @to_ordinal
   def is_dentry_prefix_elem_char(self, char):

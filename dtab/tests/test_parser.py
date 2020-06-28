@@ -1,8 +1,9 @@
-from dtab.dtab import Dentry, Dtab
+from dtab import Dentry, Dtab
 from dtab.error import IllegalArgumentException
 from dtab.parser import NameTreeParsers
 from dtab.path import Path
 from dtab.tree import NameTree
+from dtab.util import PY3
 from unittest import TestCase
 
 
@@ -39,18 +40,20 @@ class NameTreeParserTest(TestCase):
       NameTreeParsers.parsePath("/\\x0?")
 
   def test_error_messages(self):
-    e = None
     try:
       NameTreeParsers.parsePath("/foo^bar")
     except IllegalArgumentException as e:
-      pass
-    self.assertTrue("'/foo[^]bar'" in e.message)
-    e = None
+      if PY3:
+        self.assertTrue("'/foo[^]bar'" in str(e))
+      else:
+        self.assertTrue("'/foo[^]bar'" in e.message)
     try:
       NameTreeParsers.parsePath("/foo/bar/")
     except IllegalArgumentException as e:
-      pass
-    self.assertTrue("'/foo/bar/[]'" in e.message)
+      if PY3:
+        self.assertTrue("'/foo/bar/[]'" in str(e))
+      else:
+        self.assertTrue("'/foo/bar/[]'" in e.message)
 
   def test_parseNameTree(self):
     defaultWeight = NameTree.Weighted.defaultWeight

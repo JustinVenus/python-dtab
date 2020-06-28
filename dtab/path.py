@@ -1,6 +1,8 @@
 from dtab.tree import Leaf
 from dtab.util import u
 
+__all__ = ['Path']
+
 
 class PathBase(type):
 

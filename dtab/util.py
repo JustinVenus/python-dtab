@@ -1,5 +1,11 @@
-from six import text_type
+import sys
+
+PY3 = sys.version_info.major == 3
 
 
-def u(str_input):
-  return text_type(str_input).decode("utf-8")
+if PY3:
+  def u(str_input):
+    return str(str_input)
+else:
+  def u(str_input):
+    return unicode(str_input).decode("utf-8")

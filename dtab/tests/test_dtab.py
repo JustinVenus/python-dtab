@@ -1,4 +1,4 @@
-from dtab.dtab import Dtab, Dentry
+from dtab import Dtab, Dentry
 from dtab.name import Name
 from dtab.path import Path
 from dtab.tree import NameTree
