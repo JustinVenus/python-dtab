@@ -1,0 +1,17 @@
+# Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+[GLOBAL]
+v1 =  true  # Enable the v1 execution engine.
+v2 = false  # Turn off the v2 execution engine.
+dynamic_ui = false
+enable_pantsd = false  # Enable the Pants daemon for better performance.
+verify_config = false  # With v2 disabled, some of the default config is invalid 
+
+backend_packages = [
+  'pants.backend.python',
+]
+
+backend_packages2 = []
+
+# List v2 plugins here.
+plugins2 = []
