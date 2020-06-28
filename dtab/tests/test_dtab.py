@@ -77,12 +77,19 @@ class DtabTest(TestCase):
         dtab += Dentry.read("/a => /b")
         dtab += Dentry.read("/c => /d")
 
-        # FIXME
-        # dtab1 = Dtab(
-        #    map(lambda d: Dentry.read(
-        #        "{}=>{}".format(d.prefix.show.upper(), d.nametree.show.upper())), dtab))
-        #
-        # self.assertTrue(dtab1.size, 2)
+        dtab1 = Dtab(
+            map(
+                lambda d: Dentry.read(
+                    "/{}=>{}".format(
+                        "/".join(map(lambda x: x.buf, d.prefix.elems)),
+                        d.nametree.value.show,
+                    )
+                ),
+                dtab,
+            )
+        )
+
+        self.assertTrue(dtab1.length, 2)
 
     def test_allows_trailing_semicolon(self):
         dtab = Dtab.read(
