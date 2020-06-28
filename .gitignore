@@ -87,3 +87,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Pants controlled
+.pants.d/
+.pants.workdir.file_lock

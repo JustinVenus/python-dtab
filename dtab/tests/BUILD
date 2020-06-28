@@ -1,0 +1,12 @@
+python_tests(name="tests",
+  sources=["test_*.py"],
+  dependencies=[
+    "//:setuptools",
+    "//dtab:dtab",
+  ],
+  coverage=[
+    'dtab',
+    'dtab.parser',
+    'dtab.path',
+  ]
+)
