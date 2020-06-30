@@ -15,16 +15,16 @@ class DtabTest(TestCase):
         d1 = Dtab.read("/foo => /bar")
         d2 = Dtab.read("/foo=>/biz;/biz=>/$/inet/0/8080;/bar=>/$/inet/0/9090")
 
-        self.assertTrue(
-            d1 + d2
-            == Dtab.read(
+        self.assertEqual(
+            d1 + d2,
+            Dtab.read(
                 """
         /foo=>/bar;
         /foo=>/biz;
         /biz=>/$/inet/0/8080;
         /bar=>/$/inet/0/9090
     """
-            )
+            ),
         )
 
     def test_dtab_read_ignores_comment_line(self):
@@ -63,13 +63,13 @@ class DtabTest(TestCase):
         s += "NameTree.Union(NameTree.Weighted(1.0,NameTree.Leaf(Path(/bliz))),"
         s += "NameTree.Weighted(1.0,NameTree.Leaf(Path(/bluth)))))"
 
-        self.assertTrue(str(dtab) == s)
+        self.assertEqual(repr(dtab), s)
 
-        self.assertTrue(withComments == dtab)
+        self.assertEqual(withComments, dtab)
 
     def test_d1_concat_dtab_empty(self):
         d1 = Dtab.read("/foo=>/bar;/biz=>/baz")
-        self.assertTrue(d1 + Dtab.empty == d1)
+        self.assertEqual(d1 + Dtab.empty, d1)
 
     def test_is_collection(self):
         # these are mostly just compilation tests.
@@ -98,11 +98,92 @@ class DtabTest(TestCase):
       /a => /b;
     """
         )
-        self.assertTrue(dtab.length == 2)
+        self.assertEqual(dtab.length, 2)
 
     def test_dtab_rewrites_with_wildcard(self):
         dtab = Dtab.read("/a/*/c => /d")
 
         nametree = dtab.lookup(Path.read("/a/b/c/e/f"))
         leaf = NameTree.Leaf(Name.Path(Path.read("/d/e/f")))
-        self.assertTrue(nametree == leaf)
+        self.assertEqual(nametree, leaf)
+
+    def test_lookup_simple(self):
+        dtab = Dtab.read(
+            """/zk#    =>      /$/com.twitter.serverset;
+                        /zk     =>      /zk#;
+                        /s##    =>      /zk/zk.local.twitter.com:2181;
+                        /s#     =>      /s##/prod;
+                        /s      =>      /s#;"""
+        )
+
+        one = NameTree.read("/s/crawler")
+        two = dtab.lookup(one)
+        self.assertEqual(two, NameTree.read("/s#/crawler"))
+        three = dtab.lookup(two)
+        self.assertEqual(three, NameTree.read("/s##/prod/crawler"))
+        four = dtab.lookup(three)
+        self.assertEqual(
+            four, NameTree.read("/zk/zk.local.twitter.com:2181/prod/crawler")
+        )
+        five = dtab.lookup(four)
+        self.assertEqual(
+            five, NameTree.read("/zk#/zk.local.twitter.com:2181/prod/crawler")
+        )
+        six = dtab.lookup(five)
+        self.assertEqual(
+            six,
+            NameTree.read(
+                "/$/com.twitter.serverset/zk.local.twitter.com:2181/prod/crawler"
+            ),
+        )
+
+    def test_lookup_alternate(self):
+        dtab = Dtab.read(
+            """/zk#    =>      /$/com.twitter.serverset;
+                        /zk     =>      /zk#;
+                        /s##    =>      /zk/zk.local.twitter.com:2181;
+                        /s#     =>      /s##/prod;
+                        /s      =>      /s#;
+                        /s#     =>      /s##/staging;"""
+        )
+
+        one = NameTree.read("/s/crawler")
+        two = dtab.lookup(one)
+        self.assertEqual(two, NameTree.read("/s#/crawler"))
+        alternates = dtab.lookup(two)
+        self.assertIsInstance(alternates, NameTree.Alt)
+        self.assertEqual(len(alternates), 2)
+
+        self.assertEqual(alternates.trees[0], NameTree.read("/s##/staging/crawler"))
+        three0 = dtab.lookup(alternates.trees[0])
+        self.assertEqual(
+            three0, NameTree.read("/zk/zk.local.twitter.com:2181/staging/crawler")
+        )
+        four0 = dtab.lookup(three0)
+        self.assertEqual(
+            four0, NameTree.read("/zk#/zk.local.twitter.com:2181/staging/crawler")
+        )
+        five0 = dtab.lookup(four0)
+        self.assertEqual(
+            five0,
+            NameTree.read(
+                "/$/com.twitter.serverset/zk.local.twitter.com:2181/staging/crawler"
+            ),
+        )
+
+        self.assertEqual(alternates.trees[1], NameTree.read("/s##/prod/crawler"))
+        three1 = dtab.lookup(alternates.trees[1])
+        self.assertEqual(
+            three1, NameTree.read("/zk/zk.local.twitter.com:2181/prod/crawler")
+        )
+        four1 = dtab.lookup(three1)
+        self.assertEqual(
+            four1, NameTree.read("/zk#/zk.local.twitter.com:2181/prod/crawler")
+        )
+        five1 = dtab.lookup(four1)
+        self.assertEqual(
+            five1,
+            NameTree.read(
+                "/$/com.twitter.serverset/zk.local.twitter.com:2181/prod/crawler"
+            ),
+        )
