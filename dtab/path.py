@@ -22,6 +22,9 @@ class PathBase(type):
 
 
 class Path(PathBase("PathBase", (object,), {})):
+
+    __slots__ = ("_elems",)
+
     @classmethod
     def Utf8(cls, *elems):
         return cls(*[u(elem) for elem in elems])
@@ -42,6 +45,14 @@ class Path(PathBase("PathBase", (object,), {})):
     @property
     def elems(self):
         return self._elems
+
+    def take(self, n):
+        """returns first `n` elements"""
+        return self.__class__(*self._elems[:n])
+
+    def drop(self, n):
+        """returns remainder after `n` elements"""
+        return self.__class__(*self._elems[n:])
 
     def startswith(self, other):
         return self.show.startswith(other.show)
@@ -66,6 +77,8 @@ class Path(PathBase("PathBase", (object,), {})):
 
     def __str__(self):
         return "Path({})".format(self.show)
+
+    __repr__ = __str__
 
     def __add__(self, other):
         if isinstance(other, self.__class__):

@@ -11,7 +11,7 @@ class NameTreeBase(type):
     def unionFail(cls):
         return [cls.Weighted(cls.Weighted.defaultWeight, cls.Fail)]
 
-    def read(s):
+    def read(cls, s):
         from dtab.parser import NameTreeParsers
 
         return NameTreeParsers.parseNameTree(s)
@@ -29,11 +29,83 @@ class NameTreeBase(type):
             return Alt(*list(map(func, tree)))
         if isinstance(tree, cls.Leaf):
             return cls.Leaf(func(tree))
-        if isinstance(tree, (cls.Fail, cls.Neg, cls.Empty)):
+        if tree is cls.Fail or tree is cls.Neg or tree is cls.Empty:
             return tree
+
+    def simplify(cls, tree):
+        if isinstance(tree, cls.Alt) and not len(tree):
+            return cls.Neg
+        elif isinstance(tree, cls.Alt) and len(tree) == 1:
+            return cls.simplify(tree[0])
+        elif isinstance(tree, cls.Alt):
+            trees, accum = list(tree.trees), []
+            while True:  # avoid recursion
+                if not trees:
+                    break
+                head = trees[:1][0]
+                tail = trees[1:]
+                r1 = cls.simplify(head)
+                if r1 is cls.Fail:
+                    accum.append(cls.Fail)
+                    break
+                elif r1 is cls.Neg:
+                    trees = list(tail)
+                    continue
+                elif r1 == head:
+                    trees = list(tail)
+                    accum.append(head)
+                    continue
+            if not accum:
+                return cls.Neg
+            elif len(accum) == 1:
+                return accum[0]
+            return cls.Alt.fromSeq(accum)
+        elif isinstance(tree, cls.Union) and not len(tree):
+            return cls.Neg
+        elif isinstance(tree, cls.Union) and len(tree) == 1:
+            return cls.simplify(tree[0].tree)  # extract tree from Weighted
+        elif isinstance(tree, cls.Union):
+            trees, accum = list(tree.trees), []
+            while True:  # avoid recursion
+                if not trees:
+                    break
+                head = trees[:1][0]
+                tail = trees[1:]
+                r1 = cls.simplify(head.tree)
+                if r1 is cls.Fail or r1 is cls.Neg:
+                    trees = list(tail)
+                    continue
+                elif r1 == head.tree:
+                    trees = list(tail)
+                    accum.append(cls.Weighted(head.weight, head.tree))
+                    continue
+            if not accum:
+                return cls.Neg
+            elif len(accum) == 1:
+                return accum[0].tree
+            return cls.Union.fromSeq(accum)
+        return tree
 
 
 class NameTree(NameTreeBase("NameTreeBase", (object,), {})):
+    __slots__ = tuple("_simplified")
+
+    @property
+    def simplified(self):
+        result = getattr(self, "_simplified", None)
+        if result is None:
+            self._simplified = self.__class__.simplify(self)
+            return self._simplified
+        return result
+
+    def eval(self):
+        result = self.__class__.evaluate(self)
+        if isinstance(result, (Fail, Neg)):
+            return None
+        elif isinstance(result, Leaf):
+            return result.value
+        raise RuntimeError("bug")
+
     @property
     def show(self):
         raise NotImplementedError()
@@ -43,6 +115,8 @@ class NameTree(NameTreeBase("NameTreeBase", (object,), {})):
 
     def __str__(self):
         return "NameTree.{}({})".format(self.__class__.__name__, self.show)
+
+    __repr__ = __str__
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -54,6 +128,12 @@ class NameTree(NameTreeBase("NameTreeBase", (object,), {})):
 
 
 class Alt(NameTree):
+    __slots__ = ("_trees",)
+
+    @classmethod
+    def fromSeq(cls, seq):
+        return cls(*seq)
+
     def __init__(self, *trees):
         self._trees = []
         for tree in trees:
@@ -63,6 +143,9 @@ class Alt(NameTree):
 
     def __iter__(self):
         return iter(self._trees)
+
+    def __getitem__(self, idx):
+        return self._trees[idx]
 
     @property
     def trees(self):
@@ -77,12 +160,16 @@ class Alt(NameTree):
 
 
 class Empty(NameTree):
+    __slots__ = tuple()
+
     @property
     def show(self):
         return "Empty"
 
     def __str__(self):
-        return "NameTree.{}".format(self.show)
+        return "NameTree.Empty"
+
+    __repr__ = __str__
 
     def __eq__(self, other):
         return self is other
@@ -92,12 +179,16 @@ Empty = Empty()  # singleton
 
 
 class Fail(NameTree):
+    __slots__ = tuple()
+
     @property
     def show(self):
         return "Fail"
 
     def __str__(self):
-        return "NameTree.{}".format(self.show)
+        return "NameTree.Fail"
+
+    __repr__ = __str__
 
     def __eq__(self, other):
         return self is other
@@ -107,6 +198,8 @@ Fail = Fail()  # singleton
 
 
 class Leaf(NameTree):
+    __slots__ = ("_value",)
+
     def __init__(self, value):
         if not hasattr(self.__class__, "__path"):
             from dtab.path import Path
@@ -140,12 +233,16 @@ class Leaf(NameTree):
 
 
 class Neg(NameTree):
+    __slots__ = tuple()
+
     @property
     def show(self):
         return "Neg"
 
     def __str__(self):
-        return "NameTree.{}".format(self.show)
+        return "NameTree.Neg"
+
+    __repr__ = __str__
 
     def __eq__(self, other):
         return self is other
@@ -155,9 +252,11 @@ Neg = Neg()  # singleton
 
 
 class Union(NameTree):
+    __slots__ = ("_trees",)
+
     @classmethod
-    def from_seq(cls, trees):
-        return cls(trees)
+    def fromSeq(cls, trees):
+        return cls(*trees)
 
     def __init__(self, *trees):
         self._trees = []
@@ -169,6 +268,9 @@ class Union(NameTree):
     def __iter__(self):
         return iter(self._trees)
 
+    def __getitem__(self, idx):
+        return self._trees[idx]
+
     @property
     def trees(self):
         return self._trees
@@ -177,9 +279,21 @@ class Union(NameTree):
     def show(self):
         return ",".join([t.__str__() for t in self.trees])
 
+    def __len__(self):
+        return len(self.trees)
+
+
+class classproperty(object):
+    def __init__(self, f):
+        self.f = f
+
+    def __get__(self, obj, owner):
+        return self.f(owner)
+
 
 class Weighted(NameTree):
-    defaultWeight = 1
+    defaultWeight = classproperty(lambda _: 1.0)
+    __slots__ = ("_tree", "_weight")
 
     def __init__(self, weight, tree):
         if not isinstance(tree, NameTree):

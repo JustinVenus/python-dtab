@@ -2,6 +2,9 @@ from dtab.path import Path
 
 
 class Address(object):
+
+    __slots__ = tuple()
+
     @property
     def pending(self):
         raise NotImplementedError()

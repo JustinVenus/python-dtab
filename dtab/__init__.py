@@ -16,18 +16,16 @@ class DtabBase(type):
 
     @property
     def empty(cls):
-        """An empty delegation table."""
+        """An empty delegation table"""
         if not hasattr(cls, "_empty"):
             cls._empty = cls([])
         return cls._empty
 
     @property
     def base(cls):
-        """The base, or "system", or "global", delegation table applies to every
-    request in this process.
-
-    It is generally set at process startup, and not changed thereafter.
-    """
+        """The base, or "system", or "global", delegation table applies to
+       every request in this process.  It is generally set at process
+       startup, and not changed thereafter."""
         if not hasattr(cls, "_base"):
             cls._base = cls.empty
         return cls._base
@@ -41,13 +39,14 @@ class DtabBase(type):
 
 
 class Dtab(DtabBase("DtabBase", (object,), {})):
-    """A Dtab (short for delegation table) comprises a sequence of delegation
-  rules.
-
-  Together, these describe how to bind a dtab.path.Path to a set of
-  dtab.address.Addr.  dtab.naming.DefaultInterpreter implements the
-  default binding strategy.
+    """A Dtab (short for delegation table) comprises a sequence of
+     delegation rules.  Together, these describe how to bind a
+     dtab.path.Path to a set of
+     dtab.address.Addr.  dtab.naming.DefaultInterpreter
+     implements the default binding strategy.
   """
+
+    __slots__ = ("_dentries", "_public")
 
     @classmethod
     def read(cls, s):
@@ -70,18 +69,18 @@ class Dtab(DtabBase("DtabBase", (object,), {})):
             elif isinstance(args, list):
                 self._dentries.append(Dentry(*args))
             else:
-                raise TypeError("Input must be coercible to a  Dentry")
+                raise TypeError("Input must be coercible to a Dentry")
         self._public = [d for d in self._dentries]
         self._dentries.reverse()  # must invert the List[Dentry] for lookup
 
     @property
     def dentries(self):
-        """List[Dentry] provided to the Dtab's constructor."""
+        """List[Dentry] provided to the Dtab's constructor"""
         return self._public
 
     @property
     def length(self):
-        """Represents the number of Dentry instances mapped."""
+        """Represents the number of Dentry instances mapped"""
         return len(self._public)
 
     @property
@@ -89,13 +88,21 @@ class Dtab(DtabBase("DtabBase", (object,), {})):
         return self.length == 0
 
     def lookup(self, path):
-        """Lookup the given `path` with this dtab."""
+        """Lookup the given `path` with this dtab"""
+        if isinstance(path, NameTree) and hasattr(path, "value"):
+            path = path.value
+        elif not isinstance(path, Path):
+            raise TypeError("Input must be a `dtab.path.Path`")
         matches = []
         # don't use public dentries
         for dentry in self._dentries:
             if dentry.prefix.matches(path):
                 suffix = path.elems[dentry.prefix.size :]
-                matches.append(dentry.nametree.map(lambda pfx: Name.Path(pfx + suffix)))
+                matches.append(
+                    dentry.nametree.map(
+                        lambda pfx: NameTree.Leaf(Name.Path(pfx + suffix))
+                    )
+                )
         if not len(matches):
             return NameTree.Neg
         elif len(matches) == 1:
@@ -131,7 +138,7 @@ class Dtab(DtabBase("DtabBase", (object,), {})):
         return not self.__eq__(other)
 
     def copy(self, dentry=None):
-        """Constructs a new Dtab with `dentry` appended if provided."""
+        """Constructs a new Dtab with `dentry` appended if provided"""
         dentries = self.dentries
         if dentry is not None:
             dentries.append(dentry)
@@ -143,6 +150,8 @@ class Dtab(DtabBase("DtabBase", (object,), {})):
 
     def __str__(self):
         return "{}({})".format(self.__class__.__name__, self.show)
+
+    __repr__ = __str__
 
     def pretty_print(self):
         print("Dtab({})".format(self.length))
@@ -170,6 +179,8 @@ class DentryBase(type):
 class Dentry(DentryBase("DentryBase", (object,), {})):
     """Dentry describes a delegation table entry."""
 
+    __slots__ = ("_prefix", "_nametree")
+
     @classmethod
     def read(cls, s):
         """Parse a Dentry from the string `s` with concrete syntax:
@@ -185,9 +196,7 @@ class Dentry(DentryBase("DentryBase", (object,), {})):
 
     def __init__(self, prefix, nametree):
         """`prefix` describes the paths that the entry applies to.
-
-    `nametree` describes the resulting tree for this prefix on lookup.
-    """
+       `nametree` describes the resulting tree for this prefix on lookup."""
         if not isinstance(prefix, self.__class__.Prefix):
             raise TypeError(
                 "'{}' is not derived from {}.{}".format(
@@ -221,8 +230,13 @@ class Dentry(DentryBase("DentryBase", (object,), {})):
     def __str__(self):
         return "Dentry({})".format(self.show)
 
+    __repr__ = __str__
+
 
 class Elem(object):
+
+    __slots__ = tuple()
+
     def __ne__(self, other):
         return not self.__eq__(other)
 
@@ -230,8 +244,12 @@ class Elem(object):
 class AnyElem(Elem):
     show = property(lambda _: "*")
 
+    __slots__ = tuple()
+
     def __str__(self):
         return "AnyElem"
+
+    __repr__ = __str__
 
     def __eq__(self, other):
         return True
@@ -241,6 +259,9 @@ AnyElem = AnyElem()  # singleton
 
 
 class Label(Elem):
+
+    __slots__ = ("_buf",)
+
     def __init__(self, buf):
         if not buf:
             raise ValueError("Input is empty")
@@ -256,6 +277,8 @@ class Label(Elem):
 
     def __str__(self):
         return "Label({})".format(self.buf)
+
+    __repr__ = __str__
 
     def __eq__(self, other):
         if isinstance(other, Label):
@@ -276,6 +299,9 @@ class PrefixBase(type):
 
 
 class Prefix(PrefixBase("PrefixBase", (object,), {})):
+
+    __slots__ = ("_elems",)
+
     @classmethod
     def read(cls, s):
         """Parses `s` as a prefix matching expression with concrete syntax
@@ -341,3 +367,5 @@ class Prefix(PrefixBase("PrefixBase", (object,), {})):
 
     def __str__(self):
         return "Prefix({})".format(self.show)
+
+    __repr__ = __str__
