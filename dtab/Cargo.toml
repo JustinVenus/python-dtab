@@ -1,0 +1,15 @@
+[package]
+name = "dtab"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "dtab"
+path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
+
+[features]
+default = []
+ffi = []
+
+[dependencies]

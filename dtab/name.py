@@ -1,27 +1,16 @@
-from dtab.path import Path
+"""
+Name module for DTab.
+"""
+
+from .dtab_core import Path
 
 
-class Address(object):
-
-    __slots__ = tuple()
-
-    @property
-    def pending(self):
-        raise NotImplementedError()
-
-
-class Bound(object):
-    def __init__(self, address):
-        self.address = address
-
-
-class NameBase(type):
-    Path = property(lambda _: Path)
-    Bound = property(lambda _: Bound)
-
-
-class Name(NameBase("NameBase", (object,), {})):
-    pass
-
-
-__all__ = ["Name"]
+class Name:
+    """Name class for DTab."""
+    
+    @staticmethod
+    def Path(path):
+        """Create a path name."""
+        if isinstance(path, str):
+            return Path.read(path)
+        return path 

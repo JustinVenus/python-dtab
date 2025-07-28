@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.SYMDEF
+lib.rmeta
+dtab/examples/basic_usage
 
 # C extensions
 *.so
@@ -89,5 +92,6 @@ ENV/
 .ropeproject
 
 # Pants controlled
+.pids
 .pants.d/
 .pants.workdir.file_lock

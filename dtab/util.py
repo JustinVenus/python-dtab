@@ -1,15 +1,10 @@
-import sys
+"""
+Utility module for DTab.
+"""
 
-PY3 = sys.version_info.major == 3
+# Python 3 compatibility
+PY3 = True
 
-
-if PY3:
-
-    def u(str_input):
-        return str(str_input)
-
-
-else:
-
-    def u(str_input):
-        return unicode(str_input).decode("utf-8")
+def u(s):
+    """Convert string to unicode (for Python 2/3 compatibility)"""
+    return s 
